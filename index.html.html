@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Content Management Guide — Interactive Wizard</title>
+<meta name="description" content="An interactive step-by-step wizard that guides content teams through CMS workflows with checkpoint questions and branching logic.">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8fafc;min-height:100vh}
+.header{background:linear-gradient(135deg,#7c3aed,#5b21b6);padding:28px 24px 24px;text-align:center}
+.header h1{color:#fff;font-size:22px;font-weight:700;margin:8px 0 0}
+.header .icon{font-size:36px}
+.header p{color:rgba(255,255,255,.75);font-size:14px;margin:4px 0 0}
+.container{max-width:620px;margin:0 auto;padding:20px 16px}
+.card{background:#fff;border-radius:14px;padding:18px 22px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:14px;border:2px solid transparent;transition:.15s}
+.card:hover{border-color:#7c3aed}
+.ci{font-size:28px;width:44px;text-align:center;flex-shrink:0}
+.ct{font-weight:600;font-size:15px;color:#1e293b}
+.cd{font-size:13px;color:#64748b;margin-top:2px}
+.order-banner{margin-top:20px;padding:16px 20px;background:#ede9fe;border-radius:12px;font-size:13px;color:#5b21b6;line-height:1.6}
+.sc{background:#fff;border-radius:14px;padding:20px 24px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px}
+.sl{font-size:12px;font-weight:600;color:#7c3aed;margin-bottom:8px}
+.st{font-size:15px;color:#1e293b;line-height:1.7}
+.st strong{font-weight:700}
+.warn{background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:10px 14px;margin:8px 0;font-size:13px;line-height:1.6;display:flex;gap:8px}
+.info{background:#ede9fe;border:1px solid #7c3aed;border-radius:10px;padding:10px 14px;margin:8px 0;font-size:13px;line-height:1.6;display:flex;gap:8px}
+.stop{background:#fee2e2;border:1px solid #ef4444;border-radius:10px;padding:10px 14px;margin:8px 0;font-size:13px;line-height:1.6;display:flex;gap:8px}
+.br{display:flex;gap:10px;justify-content:space-between;margin-top:10px;flex-wrap:wrap}
+.btn{padding:10px 22px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:.15s}
+.bp{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff}.bp:hover{opacity:.9}
+.bs{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}.bs:hover{background:#e2e8f0}
+.bd{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}.bd:hover{background:#fee2e2}
+.bg{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none}
+.bo{background:#fff;border:1px solid #e2e8f0;color:#374151;padding:12px 16px;border-radius:10px;text-align:left;width:100%;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:8px}.bo:hover{border-color:#7c3aed;background:#f5f3ff}
+.dots{display:flex;gap:6px;justify-content:center;margin-bottom:16px}
+.dot{width:10px;height:10px;border-radius:50%}
+.da{background:#7c3aed}.di{background:#e2e8f0}
+.pb{margin-bottom:16px}
+.pb .r{display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:4px}
+.pb .t{background:#e2e8f0;border-radius:6px;height:6px;overflow:hidden}
+.pb .f{background:linear-gradient(90deg,#7c3aed,#a78bfa);height:100%;border-radius:6px;transition:width .3s}
+.sh{background:linear-gradient(135deg,#7c3aed,#5b21b6);padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+.sh .l{display:flex;align-items:center;gap:10px}
+.sh .ti{color:#fff;font-weight:700;font-size:15px}
+.sh .su{color:rgba(255,255,255,.7);font-size:12px}
+.sh .h{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;text-decoration:none}.sh .h:hover{background:rgba(255,255,255,.25)}
+.foot{text-align:center;padding:24px 16px;font-size:12px;color:#94a3b8;line-height:1.6}
+.foot a{color:#7c3aed}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const TASKS=[
+{id:"lesson",icon:"📄",label:"Upload a New Lesson",desc:"Upload a SCORM lesson to the CMS"},
+{id:"course",icon:"📦",label:"Create a Course",desc:"Build a course from existing lessons"},
+{id:"challenge",icon:"❓",label:"Upload a Challenge",desc:"Create a quiz and publish via pipeline"},
+{id:"tag",icon:"🏷️",label:"Tag a Lesson / Course",desc:"Assign topic tags in the platform"},
+{id:"update",icon:"🔄",label:"Update an Existing Lesson",desc:"Upload a new version of a lesson"},
+{id:"scorm",icon:"🎬",label:"Export SCORM from Storyline",desc:"Export a Storyline file as SCORM zip"},
+{id:"pipeline",icon:"🚀",label:"Publish via CI/CD Pipeline",desc:"Deploy challenges to environments"}
+];
+
+const FLOWS={
+lesson:{title:"Upload a New Lesson",
+cps:[
+{q:"Do you already have the SCORM .ZIP file exported from Articulate Storyline?",y:"next",n:"scorm_block"},
+{q:"Do you have the lesson name, description, and a logo image (PNG or SVG)?",y:"next",n:"meta_block"},
+{q:"Is this the FIRST lesson for a brand new course, or an additional lesson for an existing course?",opts:[{l:"First lesson — brand new course",v:"pathA"},{l:"Additional lesson — existing course",v:"pathB"}]}
+],
+blocks:{scorm_block:{m:"You need to export the SCORM file first. Go back to the main menu and choose <strong>Export SCORM from Storyline</strong>. Come back once you have the .ZIP file.",s:true},meta_block:{m:"Before uploading, prepare: <strong>lesson name</strong>, a <strong>short description</strong>, and a <strong>logo image (PNG/SVG)</strong>. Come back when you have all three.",s:true}},
+pathA:{t:"Path A — First Lesson / New Course",steps:[
+{x:"Sign in to your <strong>Dev environment</strong> management portal."},
+{x:"Click on your email in the top-right area → <strong>Open CMS</strong>."},
+{x:"In the left sidebar, click the <strong>Lesson Management</strong> section.",w:"Make sure you select the correct lessons panel — some CMS systems have multiple sections with similar names!"},
+{x:"Since this is a brand new course, there are no existing lessons to search for. <strong>Skip searching</strong> and go to the next step."},
+{x:"Click the <strong>Add New</strong> button in the top-right bar."},
+{x:"The <strong>Details</strong> tab opens. Fill in all lesson details from your storyboard or content file.",w:"CRITICAL: The course name you enter here is the FIRST TIME it appears in the system. Choose it carefully and <strong>WRITE IT DOWN EXACTLY</strong> — copy it to your notes. Every future lesson must use this identical name, character for character."},
+{x:"Switch to the <strong>Version / Upload</strong> tab. Upload your ZIP file. Click the small arrow on Save → write <strong>v1</strong> in both Name and Note fields → wait for the green confirmation."},
+{x:"Go back to the lessons list to verify your lesson appears. Refresh if needed.",i:"If you have more lessons for this course, repeat this process — but use the EXACT same course name you noted. You can also use Path B next time."}
+]},
+pathB:{t:"Path B — Additional Lesson / Existing Course",steps:[
+{x:"Sign in to your <strong>Dev environment</strong> management portal."},
+{x:"Click your email in the top-right area → <strong>Open CMS</strong>."},
+{x:"In the left sidebar, click the <strong>Lesson Management</strong> section.",w:"Make sure you select the correct lessons panel — some CMS systems have multiple sections with similar names!"},
+{x:"Scroll down to <strong>Rows per page</strong> at the bottom → set it to the maximum."},
+{x:"Press <strong>Ctrl + F</strong> → search for your existing course name → <strong>COPY IT EXACTLY</strong> to your notes.",w:"Do NOT type the course name manually! Even a small typo, extra space, or different capitalization will cause the lesson to NOT be grouped with the others."},
+{x:"Click the <strong>Add New</strong> button in the top-right bar."},
+{x:"In the <strong>Details</strong> tab, <strong>PASTE</strong> the course name you copied. Fill in remaining details → click <strong>Save</strong>."},
+{x:"Switch to <strong>Version / Upload</strong> tab → upload ZIP → Save arrow → <strong>v1</strong> in Name and Note → wait for confirmation."},
+{x:"Go back to the lessons list to verify your lesson appears. Refresh if needed."}
+]}
+},
+course:{title:"Create a New Course",
+cps:[
+{q:"Have <strong>ALL</strong> the lessons for this course already been uploaded to the CMS?",y:"next",n:"lessons_block"},
+{q:"Have you created the challenges (quizzes) for each lesson?",y:"next",n:"no_chall"},
+{q:"Which environment are you creating this course in?",opts:[{l:"Development",v:"steps"},{l:"Staging",v:"stage_block"},{l:"Production",v:"prod_block"}]}
+],
+blocks:{
+lessons_block:{m:"A course is just a <strong>container</strong> that groups existing lessons — it CANNOT be created without lessons. You need to <strong>upload ALL lessons</strong> first. Go back and choose <strong>Upload a New Lesson</strong>.",s:true},
+no_chall:{m:"No problem! You can create the course on Dev without challenges to test lessons first. But you'll need challenges before promoting to Staging/Prod."},
+stage_block:{m:"Before Staging, you must create and test on Dev first.",cp:{q:"Have you created and tested this course on Dev successfully?",y:"steps",n:"do_dev"}},
+prod_block:{m:"Before Production, you must test on Dev AND Staging. Team lead must approve.",cp:{q:"Have you tested on both Dev AND Staging?",y:"steps",n:"do_prev"}},
+do_dev:{m:"Please create and test the course on <strong>Dev</strong> first, then come back.",s:true},
+do_prev:{m:"Please complete <strong>Dev and Staging</strong> first, then come back.",s:true}
+},
+steps:[
+{x:"Sign in to the <strong>target environment</strong> management portal."},
+{x:"Click the <strong>platform logo</strong> on the left sidebar."},
+{x:"Click <strong>Course Builder</strong> in the left bar.",w:"If you see an old admin interface, do NOT use it! Look for a toggle to switch to the new admin and approve the change."},
+{x:"Click <strong>Content Management</strong> → then <strong>Create Course</strong> in the upper-right."},
+{x:"Fill in the <strong>Course ID Card</strong>: course name, short description, upload a PNG/SVG logo → <strong>Next Step</strong>."},
+{x:"Select your lessons <strong>IN THE CORRECT ORDER</strong> by clicking them → <strong>Next Step</strong>.",w:"Select lessons in correct order NOW! The reorder feature in the next step is unreliable and very slow."},
+{x:"Arrange Order: drag to reorder if needed (slow/unreliable) → <strong>Next Step</strong>."},
+{x:"<strong>Sub-Units (optional):</strong> Click <strong>+</strong> to add a unit. Rename it. Set <strong>Last Index</strong> = last lesson number in that sub-topic. Numbering is <strong>cumulative</strong> (e.g., Intro=4, next=7). Skip with <strong>Next Step</strong> if not needed."},
+{x:"Review everything → click <strong>Save</strong>."},
+{x:"Navigate to <strong>User Workspace</strong> to test the course.",i:"On Dev: lessons + challenges work (if published). On Stage/Prod before pipeline: only lessons."},
+{x:"Once everything works, repeat for the next environment in order.",i:"Recommended: publish challenges via your CI/CD pipeline before creating on Staging and Production."}
+]
+},
+challenge:{title:"Upload a Challenge (Quiz)",
+cps:[
+{q:"Has the lesson this challenge belongs to already been uploaded to the CMS?",y:"next",n:"lesson_block"},
+{q:"Do you have access to all required tools?<br>(Source control repo, CI/CD pipeline, VPN)",y:"next",n:"access_block"}
+],
+blocks:{lesson_block:{m:"The lesson must be uploaded first — the challenge needs to be linked to its lesson. Go to <strong>Upload a New Lesson</strong> first.",s:true},access_block:{m:"You need access to: <strong>source control</strong> (quiz repo), <strong>CI/CD pipeline</strong>, and <strong>VPN</strong>. Request access from your team lead or IT.",s:true}},
+steps:[
+{x:"Sign in to your <strong>source control</strong> → verify the quiz repository exists. <strong>Leave this tab open.</strong>"},
+{x:"Open a new tab → go to the <strong>Dev CMS</strong>."},
+{x:"Click <strong>Challenges</strong> in the left menu → <strong>+New</strong> upper-right."},
+{x:"Fill in the form:<br>• <strong>Question:</strong> The quiz text<br>• <strong>Level:</strong> Beginner, Intermediate, or Expert<br>• <strong>Tags:</strong> Add TWO tags pressing ENTER after each:<br>&nbsp;&nbsp;— First: a <strong>category tag</strong> → ENTER<br>&nbsp;&nbsp;— Second: a <strong>UNIQUE identifier</strong> → ENTER<br>• <strong>Options:</strong> Add answers, mark correct with ✓",w:"The second tag must be <strong>UNIQUE</strong> — never duplicated with any other challenge!"},
+{x:"Click <strong>Save and Push to Git</strong>. Verify: green success message and identifier assigned."},
+{x:"Connect your <strong>VPN</strong> → wait for confirmation."},
+{x:"Sign in to your <strong>CI/CD pipeline</strong> tool."},
+{x:"Run the <strong>content tag pipeline</strong>. Create a <strong>UNIQUE</strong> tag name (include today's date) → Build → wait for ALL stages green.",w:"NEVER reuse a tag name, even if the previous build failed!"},
+{x:"Run the <strong>content deployment pipeline</strong>. Choose environment → select <strong>challenges only</strong> → pick your tag → Build. Wait for all green.",i:"If any stage fails → contact your DevOps team."}
+]
+},
+tag:{title:"Tag a Lesson or Course",
+cps:[
+{q:"Has the lesson or course you want to tag already been created in the platform?",y:"next",n:"create_block"},
+{q:"Do you have admin access to the management environment?",y:"next",n:"admin_block"}
+],
+blocks:{create_block:{m:"The content must exist first. Create the lesson or course, then come back.",s:true},admin_block:{m:"You need admin access to the management environment. Request access from your team lead.",s:true}},
+steps:[
+{x:"Sign in to the management portal. Click the <strong>platform logo</strong>."},
+{x:"Click <strong>Course Builder</strong>.",w:"If you see the old admin, switch to the new admin version and approve."},
+{x:"Click the <strong>Tagging</strong> tab (last item in the left menu).",i:"Content may take a while to load. Don't wait — start searching immediately."},
+{x:"Search for your course/lesson. Use the <strong>filter icons</strong> to filter by content type. <strong>Mark the checkbox</strong> on the item to tag."},
+{x:"Browse <strong>categories → sub-tags</strong>. Click a <strong>sub-tag</strong> to attach it. You can only tag to sub-tags, not main categories.",i:"New tag: click <strong>+New Tag</strong> (select parent first). New category: <strong>+New Category</strong>. Edit/Delete: click the 3 dots."}
+]
+},
+update:{title:"Update an Existing Lesson",
+cps:[{q:"Do you have the updated SCORM .ZIP file ready?",y:"next",n:"reexport_block"}],
+blocks:{reexport_block:{m:"Re-export from Articulate Storyline first. Go to <strong>Export SCORM</strong>, then come back.",s:true}},
+steps:[
+{x:"Sign in to the Dev environment → open the <strong>CMS</strong>."},
+{x:"Increase <strong>Rows per page</strong> to max. Press <strong>Ctrl + F</strong> → find your lesson → <strong>double-click</strong> to open."},
+{x:"Update details under the <strong>Details</strong> tab, or upload a new ZIP under the <strong>Version / Upload</strong> tab."},
+{x:"Click Save arrow → <strong>Save As</strong> → write next version (v2, v3…) in both Name and Note."},
+{x:"Open the <strong>version manager</strong> to select which version is live."},
+{x:"Change the version for <strong>Dev</strong> → publish. Then repeat for <strong>Staging</strong>, then <strong>Production</strong>.",i:"Promote environment by environment — always test before moving to the next."}
+]
+},
+scorm:{title:"Export SCORM from Articulate Storyline",
+cps:[{q:"Do you have Articulate Storyline 360 and a finalized .story file with a final slide?",y:"next",n:"need_sl"}],
+blocks:{need_sl:{m:"You need <strong>Articulate Storyline 360</strong> and a completed <strong>.story file</strong>. Finish your project first.",s:true}},
+steps:[
+{x:"On the <strong>last and final slide</strong>, add trigger: <strong>\"Complete course as completed/passed when the user clicks or swipes Next.\"</strong>"},
+{x:"On the <strong>final slide</strong>, add: <strong>Triggers → Execute JavaScript → When timeline starts</strong> → paste a script that changes the NEXT button text to COMPLETE.",i:"This ensures users see a clear 'COMPLETE' button on the final slide."},
+{x:"On <strong>all other slides</strong>, add: <strong>Triggers → Execute JavaScript → When timeline starts</strong> → paste a cleanup script that removes injected UI elements.",i:"This cleanup must be on every non-final slide to prevent UI artifacts."},
+{x:"Click <strong>Publish → LMS/LRS</strong>. Set:<br>• LMS Output: <strong>SCORM 2004</strong><br>• Tracking: <strong>Complete/Pass</strong><br>• Browser: <strong>Resize to optimal</strong> or <strong>Scale to fill</strong><br>• Quality: <strong>Standard/Optimized</strong>"},
+{x:"Click <strong>Reporting and Tracking…</strong> → verify → <strong>OK</strong> → <strong>Publish</strong>."},
+{x:"In <strong>Publish Successful</strong> → click <strong>Zip</strong> → save locally.",w:"ALWAYS save to your <strong>local drive</strong> — not network or USB! This avoids corrupted outputs."},
+{x:"Optionally test in a SCORM sandbox before uploading to the CMS.",i:"Your SCORM .ZIP is ready! Go back and choose <strong>Upload a New Lesson</strong> to upload it."}
+]
+},
+pipeline:{title:"Publish via CI/CD Pipeline",
+cps:[
+{q:"Have the challenges been created in the CMS and <strong>pushed to source control</strong>?",y:"next",n:"ch_block"},
+{q:"Is your <strong>VPN</strong> connected?",y:"next",n:"vpn_block"}
+],
+blocks:{ch_block:{m:"Create the challenges in the CMS first and push to source control. Go to <strong>Upload a Challenge</strong>.",s:true},vpn_block:{m:"Connect your <strong>VPN</strong> and wait for confirmation, then come back.",s:true}},
+steps:[
+{x:"Sign in to your <strong>CI/CD pipeline tool</strong>."},
+{x:"Navigate to the <strong>content tag pipeline</strong>."},
+{x:"Create a <strong>UNIQUE</strong> tag name (include today's date). Click <strong>Build</strong>. Wait for <strong>ALL stages green</strong>.",w:"NEVER reuse a tag name — even if a previous build failed!"},
+{x:"Navigate to the <strong>content deployment pipeline</strong>."},
+{x:"Choose environment → select <strong>challenges only</strong> → pick your tag → <strong>Build</strong>."},
+{x:"Wait for all stages <strong>green</strong>.",w:"If ANY stage fails → stop and contact your DevOps team. Do not retry alone."}
+]
+}
+};
+
+let S={task:null,phase:"menu",ci:0,path:null,si:0,bm:null,scp:null};
+function render(){const a=document.getElementById("app");if(S.phase==="menu"){a.innerHTML=menu();return;}const f=FLOWS[S.task];if(S.phase==="blocked"){a.innerHTML=hdr(f.title)+'<div class="container"><div class="stop"><span>🛑</span><div>'+S.bm+'</div></div><div style="margin-top:16px"><button class="btn bp" onclick="home()">← Back to Main Menu</button></div></div>';return;}
+if(S.phase==="block_continue"){a.innerHTML=hdr(f.title)+'<div class="container"><div class="info"><span>💡</span><div>'+S.bm+'</div></div><div style="margin-top:16px"><button class="btn bp" onclick="goS()">Continue →</button></div></div>';return;}
+if(S.phase==="subcp"){a.innerHTML=hdr(f.title)+'<div class="container">'+(S.bm?'<div class="warn"><span>⚠️</span><div>'+S.bm+'</div></div>':'')+'<div class="sc"><p style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:14px;line-height:1.5">'+S.scp.q+'</p><div class="br"><button class="btn bp" onclick="hScp(\''+S.scp.y+'\')">Yes ✓</button><button class="btn bd" onclick="hScp(\''+S.scp.n+'\')">No ✗</button></div></div></div>';return;}
+if(S.phase==="cp"){const c=f.cps[S.ci];let d='<div class="dots">';for(let i=0;i<f.cps.length;i++)d+='<div class="dot '+(i<=S.ci?'da':'di')+'"></div>';d+='</div>';
+let b='<div class="sl">CHECKPOINT '+(S.ci+1)+' OF '+f.cps.length+'</div><p style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:16px;line-height:1.5">'+c.q+'</p>';
+if(c.opts)b+=c.opts.map(o=>'<button class="bo" onclick="hCp(\''+o.v+'\')">'+o.l+'</button>').join("");
+else b+='<div class="br"><button class="btn bp" onclick="hCp(\''+c.y+'\')">Yes ✓</button><button class="btn bd" onclick="hCp(\''+c.n+'\')">No ✗</button></div>';
+a.innerHTML=hdr(f.title)+'<div class="container">'+d+'<div class="sc">'+b+'</div></div>';return;}
+if(S.phase==="steps"){const steps=gSteps();const s=steps[S.si];const last=S.si===steps.length-1;const pct=((S.si+1)/steps.length*100).toFixed(0);
+let b='<div class="sl">STEP '+(S.si+1)+' OF '+steps.length+'</div><div class="st">'+s.x+'</div>';
+if(s.w)b+='<div class="warn"><span>⚠️</span><div>'+s.w+'</div></div>';
+if(s.i)b+='<div class="info"><span>💡</span><div>'+s.i+'</div></div>';
+const st=gTitle();
+a.innerHTML=hdr(f.title,st)+'<div class="container"><div class="pb"><div class="r"><span>Progress</span><span>'+(S.si+1)+'/'+steps.length+'</span></div><div class="t"><div class="f" style="width:'+pct+'%"></div></div></div><div class="sc">'+b+'</div><div class="br"><button class="btn bs" onclick="prev()">← Back</button>'+(last?'<button class="btn bg" onclick="home()">✅ Done — Back to Menu</button>':'<button class="btn bp" onclick="next()">Done — Next Step →</button>')+'</div></div>';
+a.innerHTML+='<div class="foot">Built as a knowledge transfer tool using <a href="https://claude.ai" target="_blank">Claude AI</a> — consolidating scattered docs into an interactive guided wizard.</div>';
+}}
+
+function menu(){let c=TASKS.map(t=>'<div class="card" onclick="start(\''+t.id+'\')"><div class="ci">'+t.icon+'</div><div><div class="ct">'+t.label+'</div><div class="cd">'+t.desc+'</div></div></div>').join("");
+return'<div class="header"><div class="icon">📚</div><h1>Content Management Guide</h1><p>Step-by-step interactive wizard for the content team</p></div><div class="container"><h2 style="font-size:16px;font-weight:600;color:#374151;margin:0 0 14px">What would you like to do?</h2>'+c+'<div class="order-banner"><strong>📋 Remember the order:</strong> SCORM Export → Upload Lessons → Create Challenges → Tag → Create Course → Deploy → Test → Promote</div></div><div class="foot">Built as a knowledge transfer tool using <a href="https://claude.ai" target="_blank">Claude AI</a><br>An interactive wizard that asks checkpoint questions, enforces dependencies, and guides one step at a time.</div>';}
+
+function hdr(t,s){return'<div class="sh"><div class="l"><span style="font-size:20px">📚</span><div><div class="ti">'+t+'</div>'+(s?'<div class="su">'+s+'</div>':'')+'</div></div><a class="h" onclick="home()">🏠 Menu</a></div>';}
+
+function start(id){S={task:id,phase:"cp",ci:0,path:null,si:0,bm:null,scp:null};render();}
+function home(){S={task:null,phase:"menu",ci:0,path:null,si:0,bm:null,scp:null};render();window.scrollTo(0,0);}
+function goS(){S.phase="steps";S.si=0;S.bm=null;render();}
+
+function hCp(v){const f=FLOWS[S.task];if(v==="next"){if(S.ci+1<f.cps.length){S.ci++;render();}else{S.phase="steps";S.si=0;render();}}
+else if(v==="pathA"||v==="pathB"){S.path=v;S.phase="steps";S.si=0;render();}
+else if(v==="steps"){S.phase="steps";S.si=0;render();}
+else if(f.blocks&&f.blocks[v]){const b=f.blocks[v];if(b.s){S.bm=b.m;S.phase="blocked";render();}
+else if(b.cp){S.bm=b.m;S.scp=b.cp;S.phase="subcp";render();}
+else{S.bm=b.m;S.phase="block_continue";render();}}}
+
+function hScp(v){if(v==="steps"){S.phase="steps";S.si=0;S.scp=null;S.bm=null;render();}
+else{const f=FLOWS[S.task];const b=f.blocks[v];S.bm=b?b.m:"Please complete earlier steps first.";S.phase="blocked";S.scp=null;render();}}
+
+function gSteps(){const f=FLOWS[S.task];if(S.path&&f[S.path])return f[S.path].steps;return f.steps||[];}
+function gTitle(){const f=FLOWS[S.task];if(S.path&&f[S.path])return f[S.path].t;return null;}
+function next(){S.si++;render();window.scrollTo(0,0);}
+function prev(){if(S.si>0){S.si--;render();}else{S.phase="cp";S.ci=Math.max(0,FLOWS[S.task].cps.length-1);S.path=null;render();}}
+render();
+</script>
+</body>
+</html>
